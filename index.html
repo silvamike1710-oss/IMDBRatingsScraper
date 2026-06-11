@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMDb Ratings Scraper</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="desktop">
+        <div class="window search-window win-outset">
+            <div class="title-bar">
+                <span class="title-bar-text">IMDb Ratings Scraper — Search</span>
+                <div class="title-bar-controls">
+                    <button type="button" class="title-btn win-outset" aria-hidden="true">_</button>
+                    <button type="button" class="title-btn win-outset" aria-hidden="true">□</button>
+                    <button type="button" class="title-btn win-outset" aria-hidden="true">×</button>
+                </div>
+            </div>
+            <div class="window-body header">
+                <form class="search-container" id="search-form">
+                    <label for="search-input">Movie title:</label>
+                    <input type="text" id="search-input" class="win-inset" placeholder="e.g. The Matrix" autocomplete="off">
+                    <button type="submit" class="win-outset">Search</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="window message-window win-outset" id="message-window">
+                <div class="title-bar">
+                    <span class="title-bar-text">Status</span>
+                    <div class="title-bar-controls">
+                        <button type="button" class="title-btn win-outset" aria-hidden="true">_</button>
+                        <button type="button" class="title-btn win-outset" aria-hidden="true">□</button>
+                        <button type="button" class="title-btn win-outset" aria-hidden="true">×</button>
+                    </div>
+                </div>
+                <div class="window-body">
+                    <p class="message" id="message">Search for a movie to see its IMDb rating and details.</p>
+                </div>
+            </div>
+
+            <div class="window movie-window win-outset hidden" id="movie-window">
+                <div class="title-bar">
+                    <span class="title-bar-text" id="window-title">Movie Details</span>
+                    <div class="title-bar-controls">
+                        <button type="button" class="title-btn win-outset" aria-hidden="true">_</button>
+                        <button type="button" class="title-btn win-outset" aria-hidden="true">□</button>
+                        <button type="button" class="title-btn win-outset" aria-hidden="true">×</button>
+                    </div>
+                </div>
+                <div class="window-body">
+                    <div class="movie-container" id="movie-container">
+                        <div class="movie-poster win-inset">
+                            <img id="poster" src="" alt="Movie Poster">
+                        </div>
+                        <div class="movie-details">
+                            <div class="field-group">
+                                <span class="field-label">Title:</span>
+                                <div class="movie-title">
+                                    <h1 id="title" class="win-inset">Movie Title</h1>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <span class="field-label">Info:</span>
+                                <p class="meta win-inset" id="meta"></p>
+                            </div>
+                            <div class="field-group">
+                                <span class="field-label">IMDb Rating:</span>
+                                <div class="rating win-inset" id="rating"></div>
+                            </div>
+                            <div class="field-group">
+                                <span class="field-label">Plot:</span>
+                                <div class="overview field-value overview-box win-inset" id="overview"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="taskbar win-outset">
+        <button type="button" class="start-button win-outset">
+            <span class="start-icon">⊞</span>
+            <span>Start</span>
+        </button>
+        <div class="taskbar-divider"></div>
+        <div class="taskbar-window active win-inset">IMDb Ratings Scraper</div>
+        <div class="taskbar-clock win-inset" id="clock"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById("search-form");
+        const searchInput = document.getElementById("search-input");
+        const message = document.getElementById("message");
+        const messageWindow = document.getElementById("message-window");
+        const movieWindow = document.getElementById("movie-window");
+        const movieContainer = document.getElementById("movie-container");
+        const windowTitle = document.getElementById("window-title");
+        const poster = document.getElementById("poster");
+        const title = document.getElementById("title");
+        const meta = document.getElementById("meta");
+        const rating = document.getElementById("rating");
+        const overview = document.getElementById("overview");
+        const clock = document.getElementById("clock");
+
+        const placeholderPoster = "https://via.placeholder.com/140x210/c0c0c0/000000?text=No+Poster";
+
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, "0");
+            const ampm = hours >= 12 ? "PM" : "AM";
+            hours = hours % 12 || 12;
+            clock.textContent = `${hours}:${minutes} ${ampm}`;
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        function showMessage(text, isError = false) {
+            message.textContent = text;
+            message.classList.toggle("error", isError);
+            messageWindow.classList.remove("hidden");
+            movieWindow.classList.add("hidden");
+        }
+
+        function showMovie(data) {
+            messageWindow.classList.add("hidden");
+            movieWindow.classList.remove("hidden");
+
+            windowTitle.textContent = `${data.title} — Movie Details`;
+            poster.src = data.poster || placeholderPoster;
+            poster.alt = `${data.title} poster`;
+            title.textContent = data.title;
+
+            const metaParts = [data.year, data.runtime, data.genre].filter(Boolean);
+            meta.textContent = metaParts.join(" | ");
+
+            if (data.rating && data.rating !== "N/A") {
+                const votes = data.votes ? ` (${data.votes} votes)` : "";
+                rating.textContent = `${data.rating} / 10${votes}`;
+            } else {
+                rating.textContent = "Rating not available";
+            }
+
+            overview.textContent = data.overview || "No overview available.";
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const query = searchInput.value.trim();
+            if (!query) {
+                showMessage("Enter a movie title.", true);
+                return;
+            }
+
+            showMessage("Searching...");
+
+            try {
+                const response = await fetch(`/api/movie?title=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showMessage(data.error || "Something went wrong.", true);
+                    return;
+                }
+
+                showMovie(data);
+            } catch {
+                showMessage("Could not reach the server. Is the app running?", true);
+            }
+        });
+    </script>
+</body>
+</html>
