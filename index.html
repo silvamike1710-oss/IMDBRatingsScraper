@@ -150,30 +150,47 @@
         }
 
         form.addEventListener("submit", async (event) => {
-            event.preventDefault();
+    event.preventDefault();
 
-            const query = searchInput.value.trim();
-            if (!query) {
-                showMessage("Enter a movie title.", true);
-                return;
-            }
+    const query = searchInput.value.trim();
 
-            showMessage("Searching...");
+    if (!query) {
+        showMessage("Enter a movie title.", true);
+        return;
+    }
 
-            try {
-                const response = await fetch(`/api/movie?title=${encodeURIComponent(query)}`);
-                const data = await response.json();
+    showMessage("Searching...");
 
-                if (!response.ok) {
-                    showMessage(data.error || "Something went wrong.", true);
-                    return;
-                }
+    try {
+        const API_KEY = "YOUR_OMDB_KEY";
 
-                showMovie(data);
-            } catch {
-                showMessage("Could not reach the server. Is the app running?", true);
-            }
+        const response = await fetch(
+            `https://www.omdbapi.com/?apikey=${API_KEY}&t=${encodeURIComponent(query)}&plot=full`
+        );
+
+        const data = await response.json();
+
+        if (data.Response === "False") {
+            showMessage(data.Error || "Movie not found.", true);
+            return;
+        }
+
+        showMovie({
+            title: data.Title,
+            year: data.Year,
+            rating: data.imdbRating,
+            votes: data.imdbVotes,
+            poster: data.Poster !== "N/A" ? data.Poster : null,
+            overview: data.Plot !== "N/A" ? data.Plot : null,
+            genre: data.Genre,
+            runtime: data.Runtime
         });
+
+    } catch (error) {
+        console.error(error);
+        showMessage("Failed to contact OMDb.", true);
+    }
+});
     </script>
 </body>
 </html>
